@@ -243,6 +243,10 @@ function keeperContext(
   };
 }
 
+// Leagues that play Super League keeper rules even though Sleeper lists them
+// as redraft (keepers are handled by the commissioner).
+const SUPER_LEAGUE_IDS = new Set(["1389486419981914112"]);
+
 /** Fetch everything the engine needs for one Sleeper league. */
 export async function loadSleeperSnapshot(
   leagueId: string,
@@ -274,7 +278,7 @@ export async function loadSleeperSnapshot(
   const marketValues = await market(type === "dynasty");
 
   let keeper: SleeperLeagueData["keeper"];
-  if (opts.keepers ?? type === "keeper") {
+  if (opts.keepers ?? (type === "keeper" || SUPER_LEAGUE_IDS.has(league.league_id))) {
     const [picks, transactions, marketValues] = await Promise.all([
       league.draft_id ? getDraftPicks(league.draft_id).catch(() => []) : Promise.resolve([]),
       Promise.all(
