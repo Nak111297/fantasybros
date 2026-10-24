@@ -48,6 +48,9 @@ function TradeCard({ t, snap, keeper, label }: { t: TradeSuggestion; snap: Leagu
         <span className="tag strong">You {signed(t.user.delta)} ppg</span>
         {keeper && Math.abs(t.user.keeperDelta) >= 0.5 && <span className="tag">Keeper {t.user.keeperDelta >= 0 ? "+" : "−"}${Math.abs(t.user.keeperDelta).toFixed(0)}</span>}
         <span className="tag">Them {signed(t.opponent.delta)} ppg</span>
+        {keeper && Math.abs(t.opponent.keeperDelta) >= 0.5 && (
+          <span className="tag">Their keeper {t.opponent.keeperDelta >= 0 ? "+" : "−"}${Math.abs(t.opponent.keeperDelta).toFixed(0)}</span>
+        )}
         <span className="tag strong">{Math.round(t.pAccept * 100)}% likely accepted</span>
       </div>
       <p style={{ margin: "8px 0 0" }}>{t.explanation.yourSide}.</p>

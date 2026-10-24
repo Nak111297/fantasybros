@@ -71,5 +71,7 @@ export interface LeagueSnapshot {
   teams: EngineTeam[];
   players: Record<string, EnginePlayer>;
   freeAgentIds: string[];
+  /** Consensus market value per player (e.g. FantasyCalc), for how managers perceive names. */
+  marketValue?: Record<string, number>;
   keeper?: KeeperContext;
 }

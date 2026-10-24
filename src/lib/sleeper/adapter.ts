@@ -107,6 +107,8 @@ export interface SleeperLeagueData {
   /** Projections per remaining week, same order as the weeks list. */
   projections: SleeperProjection[][];
   userId?: string;
+  /** Market values for this season's trade talk (dynasty values in dynasty leagues). */
+  marketValues?: Record<string, number> | null;
   keeper?: {
     picks: SleeperDraftPick[];
     transactions: SleeperTransaction[];
@@ -196,6 +198,7 @@ export function buildSnapshot(data: SleeperLeagueData): LeagueSnapshot {
     teams,
     players: enginePlayers,
     freeAgentIds,
+    marketValue: data.marketValues ?? undefined,
   };
 
   if (data.keeper) snap.keeper = keeperContext(snap, league, data.keeper);
@@ -217,7 +220,7 @@ function keeperContext(
   const ids = Object.keys(snap.players);
   const offense = (id: string) => ["QB", "RB", "WR", "TE"].includes(snap.players[id].position);
   const market = k.marketValues;
-  const vorp = (id: string) => Math.max(0, model.tv[id]);
+  const vorp = (id: string) => Math.max(0, model.vorp[id]);
 
   let dv: Record<string, number>;
   if (market) {
@@ -255,23 +258,28 @@ export async function loadSleeperSnapshot(leagueId: string, userId?: string): Pr
     weeks.map((w) => getWeekProjections(league.season, w).catch(() => [] as SleeperProjection[])),
   );
 
+  const scoring = summarizeScoring(league);
+  const type = leagueType(league);
+  const market = (dynasty: boolean) =>
+    getMarketValues({
+      dynasty,
+      numQbs: scoring.superflex ? 2 : 1,
+      numTeams: league.total_rosters,
+      ppr: scoring.pointsPerReception,
+    }).catch(() => null);
+  const marketValues = await market(type === "dynasty");
+
   let keeper: SleeperLeagueData["keeper"];
-  if (leagueType(league) === "keeper") {
-    const scoring = summarizeScoring(league);
+  if (type === "keeper") {
     const [picks, transactions, marketValues] = await Promise.all([
       league.draft_id ? getDraftPicks(league.draft_id).catch(() => []) : Promise.resolve([]),
       Promise.all(
         Array.from({ length: Math.max(1, currentWeek) }, (_, i) => getTransactions(leagueId, i + 1).catch(() => [])),
       ).then((w) => w.flat()),
-      getMarketValues({
-        dynasty: true,
-        numQbs: scoring.superflex ? 2 : 1,
-        numTeams: league.total_rosters,
-        ppr: scoring.pointsPerReception,
-      }).catch(() => null),
+      market(true),
     ]);
     keeper = { picks, transactions, marketValues };
   }
 
-  return buildSnapshot({ league, rosters, users, players, currentWeek, projections, userId, keeper });
+  return buildSnapshot({ league, rosters, users, players, currentWeek, projections, userId, marketValues, keeper });
 }

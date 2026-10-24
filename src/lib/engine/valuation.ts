@@ -15,7 +15,9 @@ export interface LeagueModel {
   positions: Set<Position>;
   repl: Replacement;
   ppg: Record<string, number>;
-  /** Trade value TV(p) = VORP in ppg. */
+  /** Value over replacement in ppg. */
+  vorp: Record<string, number>;
+  /** Trade value TV(p): VORP blended with market value when available. */
   tv: Record<string, number>;
 }
 
@@ -38,10 +40,40 @@ export function buildModel(snap: LeagueSnapshot): LeagueModel {
     repl[pos] = best.length ? best.reduce((a, b) => a + b, 0) / best.length : 0;
   }
 
-  const tv: Record<string, number> = {};
-  for (const p of Object.values(snap.players)) tv[p.id] = ppg[p.id] - (repl[p.position] ?? 0);
+  const vorp: Record<string, number> = {};
+  for (const p of Object.values(snap.players)) vorp[p.id] = ppg[p.id] - (repl[p.position] ?? 0);
 
-  return { snap, orderedSlots: orderSlots(snap.slots), positions, repl, ppg, tv };
+  return { snap, orderedSlots: orderSlots(snap.slots), positions, repl, ppg, vorp, tv: tradeValues(snap, vorp) };
+}
+
+const OFFENSE = new Set<Position>(["QB", "RB", "WR", "TE"]);
+/** Weight of the market in TV for players that have a market value. */
+export const MARKET_WEIGHT = 0.6;
+/** Managers rarely pay for IDP, kickers or defenses; their perceived value is discounted. */
+export const NON_OFFENSE_DISCOUNT = 0.5;
+
+/**
+ * TV(p): the value other managers perceive. Projections alone miss how people
+ * judge names (a WR stuck on a deep bench still costs a lot to get), so when a
+ * market value exists it is put on the ppg scale and blended with VORP.
+ */
+export function tradeValues(snap: LeagueSnapshot, vorp: Record<string, number>): Record<string, number> {
+  const market = snap.marketValue;
+  if (!market) return { ...vorp };
+  const ids = Object.keys(vorp);
+  // Scale market values to ppg using offensive players that have both signals.
+  const both = ids.filter((id) => OFFENSE.has(snap.players[id].position) && (market[id] ?? 0) > 0 && vorp[id] > 0);
+  const marketSum = both.reduce((s, id) => s + market[id], 0);
+  const scale = marketSum ? both.reduce((s, id) => s + vorp[id], 0) / marketSum : 0;
+  const tv: Record<string, number> = {};
+  for (const id of ids) {
+    if (OFFENSE.has(snap.players[id].position)) {
+      tv[id] = MARKET_WEIGHT * (market[id] ?? 0) * scale + (1 - MARKET_WEIGHT) * vorp[id];
+    } else {
+      tv[id] = vorp[id] > 0 ? vorp[id] * NON_OFFENSE_DISCOUNT : vorp[id];
+    }
+  }
+  return tv;
 }
 
 export function rosterOf(model: LeagueModel, ids: string[]): EnginePlayer[] {

@@ -106,6 +106,27 @@ describe("worked example trades", () => {
   });
 });
 
+describe("market values", () => {
+  it("make managers value big names they barely start", () => {
+    // The opponent's RB 12.0 is their FLEX; a hot market name should cost more.
+    const snap = { ...workedExample(), marketValue: { "oRB12": 9000, "uWR14": 1000, "uWR17": 3000, "oRB16": 4000, "oRB13.5": 2500 } };
+    const engine = new TradeEngine(buildModel(snap));
+    const [user, opp] = engine.model.snap.teams;
+    const t = engine.evaluate(user, opp, ["uWR14"], ["oRB12"]);
+    expect(engine.model.tv["oRB12"]).toBeGreaterThan(engine.model.tv["uWR14"]);
+    expect(t.valueToOpponent).toBeLessThan(0);
+    expect(t.pAccept).toBeLessThan(0.82);
+  });
+
+  it("discounts IDP, kickers and defenses", () => {
+    const snap = workedExample();
+    snap.players["oLB"] = { id: "oLB", name: "LB", position: "LB", nflTeam: null, injuryStatus: null, weekly: [10] };
+    const tvPlain = buildModel(snap).tv["oLB"];
+    const tvMarket = buildModel({ ...snap, marketValue: { uWR17: 5000 } }).tv["oLB"];
+    expect(tvMarket).toBeCloseTo(tvPlain / 2);
+  });
+});
+
 describe("Super League keeper rules", () => {
   it("prices keepers by bracket", () => {
     expect(keeperCost({ amount: 1, drafted: true }, "RB")).toBe(10);
