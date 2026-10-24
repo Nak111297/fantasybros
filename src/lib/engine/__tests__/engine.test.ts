@@ -128,6 +128,19 @@ describe("market values", () => {
     expect(t.score).toBeCloseTo(t.netGain * t.pAccept);
   });
 
+  it("leaves IDP players out of trades unless asked", () => {
+    const snap = workedExample();
+    snap.slots = [...snap.slots, "IDP_FLEX"];
+    snap.players["uLB"] = { id: "uLB", name: "uLB", position: "LB", nflTeam: null, injuryStatus: null, weekly: [12] };
+    snap.players["oLB"] = { id: "oLB", name: "oLB", position: "LB", nflTeam: null, injuryStatus: null, weekly: [6] };
+    snap.teams[0].playerIds.push("uLB");
+    snap.teams[1].playerIds.push("oLB");
+    snap.rosterMax = 10;
+    const ids = (s: ReturnType<TradeEngine["suggest"]>) => s.flatMap((t) => [...t.give, ...t.get]);
+    expect(ids(new TradeEngine(buildModel(snap), { ...DEFAULT_SETTINGS, mode: "aggressive" }).suggest("user"))).not.toContain("uLB");
+    expect(ids(new TradeEngine(buildModel(snap), { ...DEFAULT_SETTINGS, mode: "aggressive" }).suggest("user"))).not.toContain("oLB");
+  });
+
   it("discounts IDP, kickers and defenses", () => {
     const snap = workedExample();
     snap.players["oLB"] = { id: "oLB", name: "LB", position: "LB", nflTeam: null, injuryStatus: null, weekly: [10] };

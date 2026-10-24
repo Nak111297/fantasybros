@@ -17,6 +17,8 @@ export interface TradeSettings {
   c1: number;
   pMin: number;
   includeKickersAndDefense: boolean;
+  /** IDP players still count in lineups, but aren't offered or asked for. */
+  includeIdp: boolean;
   untradeable: string[];
   limit: number;
 }
@@ -32,6 +34,7 @@ export const DEFAULT_SETTINGS: TradeSettings = {
   c1: 1.5,
   pMin: 0.1,
   includeKickersAndDefense: false,
+  includeIdp: false,
   untradeable: [],
   limit: 10,
 };
@@ -77,6 +80,7 @@ export interface TradeSuggestion extends TradeEval {
 }
 
 const OFFENSE: Position[] = ["QB", "RB", "WR", "TE"];
+const IDP = new Set<Position>(["DL", "LB", "DB"]);
 
 interface KeeperState {
   ks: Record<string, number>;
@@ -261,6 +265,7 @@ export class TradeEngine {
       const p = this.model.snap.players[id];
       if (!p || skip.has(id)) return false;
       if (!this.settings.includeKickersAndDefense && (p.position === "K" || p.position === "DEF")) return false;
+      if (!this.settings.includeIdp && IDP.has(p.position)) return false;
       return this.model.positions.has(p.position);
     });
   }

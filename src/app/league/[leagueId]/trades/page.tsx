@@ -70,7 +70,7 @@ export default async function TradesPage({
   searchParams,
 }: {
   params: Promise<{ leagueId: string }>;
-  searchParams: Promise<{ user?: string; team?: string; mode?: string; strategy?: string; keepers?: string }>;
+  searchParams: Promise<{ user?: string; team?: string; mode?: string; strategy?: string; keepers?: string; idp?: string }>;
 }) {
   const { leagueId } = await params;
   const q = await searchParams;
@@ -89,6 +89,7 @@ export default async function TradesPage({
     ...DEFAULT_SETTINGS,
     mode,
     lambda: STRATEGIES[strategy].lambda,
+    includeIdp: q.idp === "on",
   });
   const started = Date.now();
   const suggestions = team && snap.weeks.length ? engine.suggest(team.id) : [];
@@ -127,6 +128,12 @@ export default async function TradesPage({
             </option>
           ))}
         </select>
+        {snap.slots.some((s) => ["DL", "LB", "DB", "IDP_FLEX"].includes(s)) && (
+          <select name="idp" defaultValue={q.idp === "on" ? "on" : "off"}>
+            <option value="off">Offense only</option>
+            <option value="on">Include IDP in trades</option>
+          </select>
+        )}
         <select name="keepers" defaultValue={keeper ? "super" : "none"}>
           <option value="super">Keepers: Super League rules</option>
           <option value="none">No keepers</option>
