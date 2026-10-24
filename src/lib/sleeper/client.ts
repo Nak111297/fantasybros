@@ -18,6 +18,7 @@ export class SleeperNotFoundError extends Error {}
 async function get<T>(path: string, revalidateSeconds = 300): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     next: { revalidate: revalidateSeconds },
+    signal: AbortSignal.timeout(20_000),
   });
   if (!res.ok) {
     throw new Error(`Sleeper API ${res.status} for ${path}`);
@@ -60,7 +61,7 @@ export function memoFetch<T>(ttlMs: number) {
   return (url: string): Promise<T> => {
     const hit = cache.get(url);
     if (hit && Date.now() - hit.at < ttlMs) return hit.data;
-    const data = fetch(url, { cache: "no-store" }).then((res) => {
+    const data = fetch(url, { cache: "no-store", signal: AbortSignal.timeout(25_000) }).then((res) => {
       if (!res.ok) throw new Error(`${res.status} for ${url}`);
       return res.json() as Promise<T>;
     });

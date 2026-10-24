@@ -122,7 +122,7 @@ export function buildSnapshot(data: SleeperLeagueData): LeagueSnapshot {
   const allowed = leaguePositions(slots);
   const rules = league.scoring_settings ?? {};
 
-  const projById = data.projections.map((week) => new Map(week.map((p) => [p.player_id, p.stats])));
+  const projById = data.projections.map((week) => new Map(week.filter((p) => p?.stats).map((p) => [p.player_id, p.stats])));
 
   const enginePlayers: Record<string, EnginePlayer> = {};
   const toEngine = (id: string): EnginePlayer | null => {

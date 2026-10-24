@@ -54,3 +54,5 @@ summary { cursor: pointer; padding: 8px 0; font-weight: 600; }
 .error { border-color: #d1242f; }
 .button-link { display: inline-block; margin-top: 12px; padding: 8px 14px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600; }
 .button-link:hover { text-decoration: none; opacity: 0.9; }
+.spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 8px 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
