@@ -9,6 +9,8 @@ export interface TradeSettings {
   /** ppg per keeper $: 0.05 win now, 0.10 balanced, 0.20 rebuild. */
   lambda: number;
   minGain: number;
+  /** How much of the market value you give away beyond what you get counts against your gain. */
+  valueGuard: number;
   sFit: number;
   sVal: number;
   c0: number;
@@ -23,6 +25,7 @@ export const DEFAULT_SETTINGS: TradeSettings = {
   mode: "win-win",
   lambda: 0.1,
   minGain: 0.5,
+  valueGuard: 0.5,
   sFit: 2.0,
   sVal: 4.0,
   c0: 0,
@@ -54,6 +57,11 @@ export interface TradeEval {
   opponent: SideResult;
   /** ΔV_O: market value the opponent receives minus what they give. */
   valueToOpponent: number;
+  /**
+   * Your gain net of overpaying: user.total + valueGuard × min(0, value you
+   * receive − value you give). Stops "win 3 ppg by giving away a star" offers.
+   */
+  netGain: number;
   pAccept: number;
   score: number;
 }
@@ -221,6 +229,7 @@ export class TradeEngine {
     const sum = (ids: string[]) => ids.reduce((s, id) => s + this.model.tv[id], 0);
     const valueToOpponent = sum(give) - sum(get);
     const pAccept = this.acceptance(o.total, valueToOpponent);
+    const netGain = u.total + this.settings.valueGuard * Math.min(0, -valueToOpponent);
     return {
       opponentId: opp.id,
       give,
@@ -228,16 +237,17 @@ export class TradeEngine {
       user: u,
       opponent: o,
       valueToOpponent,
+      netGain,
       pAccept,
-      score: u.total * pAccept,
+      score: netGain * pAccept,
     };
   }
 
   private passesMode(t: TradeEval): boolean {
-    if (t.user.total < this.settings.minGain) return false;
+    if (t.netGain < this.settings.minGain) return false;
     switch (this.settings.mode) {
       case "win-win":
-        return t.opponent.total > 0 && t.user.total > 0;
+        return t.opponent.total > 0 && t.netGain > 0;
       case "fair":
         return t.pAccept >= this.settings.pMin;
       default:
@@ -324,7 +334,7 @@ export class TradeEngine {
       }
     }
 
-    const candidates = all.filter((t) => t.user.total >= this.settings.minGain);
+    const candidates = all.filter((t) => t.netGain >= this.settings.minGain);
     candidates.sort(compareTrades(this.model.tv));
 
     // Sweeteners for promising trades the other side would probably reject.
@@ -332,7 +342,7 @@ export class TradeEngine {
     // only the sweetened version passes the mode filter.
     const pool: (TradeEval & { sweet?: TradeEval })[] = [];
     for (const t of candidates.slice(0, 300)) {
-      const sweet = t.pAccept < 0.5 && t.user.total > 0 ? this.sweeten(user, t) : null;
+      const sweet = t.pAccept < 0.5 && t.netGain > 0 ? this.sweeten(user, t) : null;
       const sweetOk = sweet && this.passesMode(sweet) ? sweet : undefined;
       if (this.passesMode(t)) pool.push({ ...t, sweet: sweetOk });
       else if (sweetOk) pool.push(sweetOk);
@@ -364,7 +374,7 @@ export class TradeEngine {
       .slice(0, 8);
     for (const { id } of options) {
       const s = this.evaluate(user, opp, [...t.give, id], t.get);
-      if (s.pAccept >= 0.5 && s.user.total >= this.settings.minGain) return s;
+      if (s.pAccept >= 0.5 && s.netGain >= this.settings.minGain) return s;
     }
     return null;
   }
@@ -380,7 +390,7 @@ export class TradeEngine {
       .slice(0, 6);
     for (const id of bench) {
       const m = this.evaluate(user, opp, t.give, [...t.get, id]);
-      if (m.pAccept > 0.5 && m.user.total > t.user.total) return m;
+      if (m.pAccept > 0.5 && m.netGain > t.netGain) return m;
     }
     return null;
   }
@@ -435,8 +445,8 @@ export class TradeEngine {
       flags.push("Hinges on an IDP player; IDP projections are less certain");
     }
 
-    const { opponentId, give, get, user: u, opponent, valueToOpponent, pAccept, score } = t;
-    return { opponentId, give, get, user: u, opponent, valueToOpponent, pAccept, score, opponentName: opp.name, explanation: { yourSide, theirSide }, flags };
+    const { opponentId, give, get, user: u, opponent, valueToOpponent, netGain, pAccept, score } = t;
+    return { opponentId, give, get, user: u, opponent, valueToOpponent, netGain, pAccept, score, opponentName: opp.name, explanation: { yourSide, theirSide }, flags };
   }
 }
 
@@ -456,9 +466,9 @@ function dropDominated<T extends TradeEval>(trades: T[]): T[] {
         (o) =>
           o !== t &&
           o.opponentId === t.opponentId &&
-          o.user.total >= t.user.total &&
+          o.netGain >= t.netGain &&
           o.pAccept >= t.pAccept &&
-          (o.user.total > t.user.total || o.pAccept > t.pAccept),
+          (o.netGain > t.netGain || o.pAccept > t.pAccept),
       ),
   );
 }

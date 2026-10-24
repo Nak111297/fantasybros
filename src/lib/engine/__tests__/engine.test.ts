@@ -118,6 +118,16 @@ describe("market values", () => {
     expect(t.pAccept).toBeLessThan(0.82);
   });
 
+  it("charges you for giving away more value than you get", () => {
+    const snap = { ...workedExample(), marketValue: { uWR17: 20000, "oRB13.5": 1000, oRB12: 1000, uWR14: 1000 } };
+    const engine = new TradeEngine(buildModel(snap));
+    const [user, opp] = engine.model.snap.teams;
+    const t = engine.evaluate(user, opp, ["uWR17"], ["oRB13.5", "oRB12"]);
+    expect(t.valueToOpponent).toBeGreaterThan(0);
+    expect(t.netGain).toBeLessThan(t.user.total);
+    expect(t.score).toBeCloseTo(t.netGain * t.pAccept);
+  });
+
   it("discounts IDP, kickers and defenses", () => {
     const snap = workedExample();
     snap.players["oLB"] = { id: "oLB", name: "LB", position: "LB", nflTeam: null, injuryStatus: null, weekly: [10] };

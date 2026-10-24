@@ -244,7 +244,11 @@ function keeperContext(
 }
 
 /** Fetch everything the engine needs for one Sleeper league. */
-export async function loadSleeperSnapshot(leagueId: string, userId?: string): Promise<LeagueSnapshot> {
+export async function loadSleeperSnapshot(
+  leagueId: string,
+  userId?: string,
+  opts: { keepers?: boolean } = {},
+): Promise<LeagueSnapshot> {
   const [league, rosters, users, players, state] = await Promise.all([
     getLeague(leagueId),
     getLeagueRosters(leagueId),
@@ -270,7 +274,7 @@ export async function loadSleeperSnapshot(leagueId: string, userId?: string): Pr
   const marketValues = await market(type === "dynasty");
 
   let keeper: SleeperLeagueData["keeper"];
-  if (type === "keeper") {
+  if (opts.keepers ?? type === "keeper") {
     const [picks, transactions, marketValues] = await Promise.all([
       league.draft_id ? getDraftPicks(league.draft_id).catch(() => []) : Promise.resolve([]),
       Promise.all(

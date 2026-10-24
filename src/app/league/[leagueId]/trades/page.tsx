@@ -52,6 +52,9 @@ function TradeCard({ t, snap, keeper, label }: { t: TradeSuggestion; snap: Leagu
           <span className="tag">Their keeper {t.opponent.keeperDelta >= 0 ? "+" : "−"}${Math.abs(t.opponent.keeperDelta).toFixed(0)}</span>
         )}
         <span className="tag strong">{Math.round(t.pAccept * 100)}% likely accepted</span>
+        {t.netGain < t.user.total - 0.05 && (
+          <span className="tag">You overpay in value: {signed(t.netGain - t.user.total)} ppg</span>
+        )}
       </div>
       <p style={{ margin: "8px 0 0" }}>{t.explanation.yourSide}.</p>
       <p className="muted" style={{ margin: "2px 0 0" }}>Them: {t.explanation.theirSide}.</p>
@@ -67,14 +70,15 @@ export default async function TradesPage({
   searchParams,
 }: {
   params: Promise<{ leagueId: string }>;
-  searchParams: Promise<{ user?: string; team?: string; mode?: string; strategy?: string }>;
+  searchParams: Promise<{ user?: string; team?: string; mode?: string; strategy?: string; keepers?: string }>;
 }) {
   const { leagueId } = await params;
   const q = await searchParams;
   const mode = (q.mode && q.mode in MODES ? q.mode : "win-win") as TradeMode;
   const strategy = (q.strategy && q.strategy in STRATEGIES ? q.strategy : "balanced") as Strategy;
 
-  const snap = await loadSleeperSnapshot(leagueId, q.user).catch((e) => {
+  const keepersParam = q.keepers === "super" ? true : q.keepers === "none" ? false : undefined;
+  const snap = await loadSleeperSnapshot(leagueId, q.user, { keepers: keepersParam }).catch((e) => {
     if (e instanceof SleeperNotFoundError) notFound();
     throw e;
   });
@@ -122,6 +126,10 @@ export default async function TradesPage({
               {v}
             </option>
           ))}
+        </select>
+        <select name="keepers" defaultValue={keeper ? "super" : "none"}>
+          <option value="super">Keepers: Super League rules</option>
+          <option value="none">No keepers</option>
         </select>
         {keeper && (
           <select name="strategy" defaultValue={strategy}>
