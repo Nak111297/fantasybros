@@ -92,3 +92,27 @@ export interface SleeperNflState {
   week: number;
   season_type: string;
 }
+
+export interface SleeperDraftPick {
+  player_id: string;
+  picked_by: string;
+  roster_id: number | string;
+  is_keeper?: boolean | null;
+  metadata?: { amount?: string; position?: string } | null;
+}
+
+export interface SleeperTransaction {
+  type: "trade" | "waiver" | "free_agent" | "commissioner" | string;
+  status: string;
+  adds: Record<string, number> | null;
+  drops: Record<string, number> | null;
+  settings?: { waiver_bid?: number } | null;
+  status_updated?: number;
+  created?: number;
+}
+
+export interface SleeperProjection {
+  player_id: string;
+  week?: number;
+  stats: Record<string, number>;
+}

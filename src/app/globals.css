@@ -52,3 +52,5 @@ summary { cursor: pointer; padding: 8px 0; font-weight: 600; }
 .pos { display: inline-block; min-width: 38px; font-size: 12px; font-weight: 700; color: var(--muted); }
 .injury { color: #d1242f; font-size: 12px; margin-left: 6px; }
 .error { border-color: #d1242f; }
+.button-link { display: inline-block; margin-top: 12px; padding: 8px 14px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600; }
+.button-link:hover { text-decoration: none; opacity: 0.9; }

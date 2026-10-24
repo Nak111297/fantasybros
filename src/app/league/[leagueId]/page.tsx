@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   getAllPlayers,
@@ -103,6 +104,12 @@ export default async function LeaguePage({
         <span className="tag">{scoring.passTd} pt pass TD</span>
         {scoring.passYd > 0 && <span className="tag">1 pt / {Math.round(1 / scoring.passYd)} pass yds</span>}
       </div>
+
+      <p>
+        <Link href={`/league/${leagueId}/trades${userId ? `?user=${userId}` : ""}`} className="button-link">
+          Find trades that help {mine ? "your team" : "a team"} →
+        </Link>
+      </p>
 
       <h2>Standings</h2>
       <div className="table-wrap">
